@@ -1,0 +1,10 @@
+#switch-db-dropdown {
+  transition: opacity 0.2s, transform 0.2s;
+  transform: scale(0.95);
+  opacity: 0;
+}
+
+#switch-db-dropdown:not(.hidden) {
+  transform: scale(1);
+  opacity: 1;
+}
