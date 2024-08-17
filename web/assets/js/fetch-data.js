@@ -546,7 +546,12 @@ function printSession(config,masterData,studentRecords){
         `
     );
     windowObj.document.close();
-    windowObj.print();
+    windowObj.onafterprint = function() {
+        windowObj.close();
+    };
+    setTimeout(function() {
+        windowObj.print();
+    }, 1000); 
 
 }
 

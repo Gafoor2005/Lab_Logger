@@ -1,9 +1,13 @@
-use std::fs;
+use std::{env, fs};
 
 pub fn list_db_files(path: &str) -> Vec<String> {
-    fs::create_dir_all(path).expect("Failed to create directory");
+    let exe_path = env::current_exe().unwrap();
+    let dir = exe_path.parent().unwrap();
+    let path = dir.join(path);
+    // println!("{} 66666666666666666666",&path.to_path_buf().as_os_str().to_string_lossy());
+    fs::create_dir_all(&path).expect("Failed to create directory");
     let mut db_files = Vec::new();
-    let files = fs::read_dir(path).unwrap();
+    let files = fs::read_dir(path.to_path_buf().as_path()).unwrap();
 
     for file in files {
         let file = file.unwrap();

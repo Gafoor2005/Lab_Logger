@@ -1,6 +1,6 @@
 use dialoguer::Select;
-use rusqlite::{Connection, Error, Result};
-use chrono::{DateTime, NaiveDateTime, Timelike, Utc};
+use rusqlite::{Connection, Result};
+use chrono::{NaiveDateTime, Timelike, Utc};
 use chrono_tz::Asia::Kolkata;
 use serde::Serialize;
 
@@ -222,82 +222,5 @@ impl Database {
 
         records
     }
-}
-
-/// old model
-fn legacy_database() -> Result<()> {
-    let conn = Connection::open("lab_logs.db")?;
-
-    // Create a new session table with the current epoch millisecond timestamp as its name
-    let table_name = format!("s_{}", Utc::now().timestamp_millis());
-
-    // create master_table if not available
-    conn.execute_batch("
-        CREATE TABLE IF NOT EXISTS master_table (
-            table_id TEXT PRIMARY KEY,
-            timestamp DATETIME,
-            course TEXT,
-            branch_sec TEXT,
-            session TEXT CHECK(session IN ('forenoon', 'afternoon'))
-        );
-    ")?;
-
-    // create new session table and record this session in master
-    conn.execute(&format!("CREATE TABLE {} (roll_number TEXT PRIMARY KEY, name TEXT, entry_timestamp DATETIME, exit_timestamp DATETIME)", table_name), ())?;
-    let master_table_name = "master_table";
-    conn.execute(&format!("INSERT INTO {} (table_id, timestamp, course, branch_sec, session) VALUES (?, ?, ?, ?, ?)", master_table_name), 
-                (&table_name, Utc::now().with_timezone(&Kolkata).format("%Y-%m-%d %H:%M:%S").to_string(), "FSAD LAB", "M402", "afternoon"))?;
-
-    println!("hello");
-    // Add a new student record to the latest session table
-    let roll_number = "22481A05F2".to_string();
-    let entry_timestampd = Utc::now();
-    let entry_timestamp = entry_timestampd.with_timezone(&Kolkata);
-
-    // conn.execute(&format!("INSERT INTO {} (roll_number, entry_timestamp) VALUES (?, ?)", table_name), (&roll_number, entry_timestamp.format("%Y-%m-%d %H:%M:%S").to_string()))?;
-    let result = conn.execute(&format!("INSERT OR IGNORE INTO {} (roll_number, entry_timestamp) VALUES (?, ?)", table_name), (&roll_number, entry_timestamp.format("%Y-%m-%d %H:%M:%S").to_string()));
-
-    match result {
-        Ok(rows_affected) => {
-            if rows_affected == 0 {
-                println!("Row already exists.");
-            } else {
-                println!("Row inserted successfully.");
-            }
-        }
-        Err(err) => {
-            println!("Error: {}", err);
-        }
-    }
-    println!("hello");
-
-    // holding..
-    println!("wait for 2 mins");
-    let mut input = String::new();
-    std::io::stdin().read_line(&mut input).unwrap();
-    
-    // Update the exit timestamp for a given roll number
-    let exit_timestamp = Utc::now().with_timezone(&Kolkata);
-    let entry_timestamp_str = conn.query_row(
-        &format!("SELECT entry_timestamp FROM {} WHERE roll_number = ?", table_name),
-        (&roll_number,),
-        |row| row.get::<_,String>(0),
-    )?;
-
-    let entry_timestamp = NaiveDateTime::parse_from_str(&entry_timestamp_str, "%Y-%m-%d %H:%M:%S").unwrap();
-
-
-    
-
-    let duration = exit_timestamp.naive_local().signed_duration_since(entry_timestamp);
-    println!("{}",duration.num_minutes());
-    if duration.num_minutes() >= 2 {
-        conn.execute(
-            &format!("UPDATE {} SET exit_timestamp = ? WHERE roll_number = ? AND exit_timestamp IS NULL", table_name),
-            (exit_timestamp.format("%Y-%m-%d %H:%M:%S").to_string(), roll_number),
-        )?;
-    }
-
-    Ok(())
 }
 

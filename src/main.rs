@@ -1,5 +1,5 @@
 
-use std::{collections::HashMap, fs::{self, File}, io::{self, BufRead, BufReader, Write}, net::{TcpListener, TcpStream}, path::{self, Path}, process::Command, thread, time::Duration};
+use std::{collections::HashMap, env, fs::{self, File}, io::{self, BufRead, BufReader, Write}, net::{TcpListener, TcpStream}};
 
 use api::{formated_list_db_files, list_db_files};
 use chrono::{Datelike, Utc};
@@ -19,41 +19,51 @@ mod api;
 
 
 fn main() {
-    display_branding();
-    ctrlc::set_handler(move || {
-        disable_raw_mode().unwrap();
-        println!("\n\nExiting...");
-        std::process::exit(0);
-    })
-    .expect("Error setting Ctrl-C handler");
-    get_config().unwrap();
-    // println!("\x1b[32m✓ Green\x1b[0m");
-    // println!("\x1b[34m✓ Blue\x1b[0m");
-    // println!("\x1b[31m✓ Red\x1b[0m");
-    // println!("\x1b[36m✓ cyan\x1b[0m");
-    // println!("\x1b[33m✓ Yellow\x1b[0m");
-    let items = vec![
-        "new session", 
-        "continue recent session", 
-        "manage reports",
-        "exit(^c)",
-    ];
-    let selection = Select::new()
-        .with_prompt("\n\x1b[33mWhat do you choose? \x1b[34m(select using arrow keys ⇵)\x1b[0m")
-        .items(&items)
-        .interact()
-        .unwrap();
+    let args: Vec<String> = std::env::args().collect();
 
-    // println!("You chose: {}", items[selection]);
-    if selection == 0{
-        init_new_session();
-    } else if selection == 1 {
-        init_continue_session();
-    } else if selection == 2 {
-        open::that("http://localhost:5252").unwrap();
-        start_server();
+    if args.len() > 1 && (args[1] == "--version" || args[1] == "-v") {
+        println!("\n\n\x1b[33mLab Logger v1.0.1"); // Set the version number here
+        println!("\x1b[36mDeveloped by Gafoor"); // Set the version number here
+        println!("\x1b[0mGitHub \x1b[33mhttps://github.com/Gafoor2005\n\x1b[0m"); // Set the version number here
+    } else {
+        // Your program's logic here
+        
+        display_branding();
+        ctrlc::set_handler(move || {
+            disable_raw_mode().unwrap();
+            println!("\n\nExiting...");
+            std::process::exit(0);
+        })
+        .expect("Error setting Ctrl-C handler");
+        get_config().unwrap();
+        // println!("\x1b[32m✓ Green\x1b[0m");
+        // println!("\x1b[34m✓ Blue\x1b[0m");
+        // println!("\x1b[31m✓ Red\x1b[0m");
+        // println!("\x1b[36m✓ cyan\x1b[0m");
+        // println!("\x1b[33m✓ Yellow\x1b[0m");
+        let items = vec![
+            "new session", 
+            "continue recent session", 
+            "manage reports",
+            "exit(^c)",
+        ];
+        let selection = Select::new()
+            .with_prompt("\n\x1b[33mWhat do you choose? \x1b[34m(select using arrow keys ⇵)\x1b[0m")
+            .items(&items)
+            .interact()
+            .unwrap();
+
+        // println!("You chose: {}", items[selection]);
+        if selection == 0{
+            init_new_session();
+        } else if selection == 1 {
+            init_continue_session();
+        } else if selection == 2 {
+            open::that("http://localhost:5252").unwrap();
+            start_server();
+        }
+        io::stdin().read_line(&mut String::new()).unwrap();
     }
-    io::stdin().read_line(&mut String::new()).unwrap();
 }
 
 fn init_continue_session(){
@@ -108,8 +118,12 @@ fn config_db() -> Database {
     let month = now.month();
     let db_folder = "databases";
 
+    let exe_path = env::current_exe().unwrap();
+    let dir = exe_path.parent().unwrap();
+    let db_folder = dir.join(db_folder);
+
     let db_file_name = format!("{:02}-{}.db", month, year);
-    let db_path = Path::new(db_folder).join(db_file_name);
+    let db_path = db_folder.join(db_file_name);
     match fs::create_dir_all(db_folder) {
         Ok(_) => (),
         Err(err) => println!("\x1b[31mError creating folder: {}\x1b[0m", err),
@@ -122,7 +136,9 @@ fn config_db() -> Database {
 
 fn connect_database(db_file_name: &str) -> Result<Connection, rusqlite::Error> {
     let db_folder = "databases";
-    let db_path = Path::new(db_folder).join(db_file_name);
+    let exe_path = env::current_exe().unwrap();
+    let dir = exe_path.parent().unwrap();
+    let db_path = dir.join(db_folder).join(db_file_name);
     match fs::create_dir_all(db_folder) {
         Ok(_) => (),
         Err(err) => println!("\x1b[31mError creating folder: {}\x1b[0m", err),
@@ -182,7 +198,7 @@ fn init_new_session() {
 }
 
 fn display_branding() {
-    let text = "Wellcome to Lab Logger";
+    let text = "Welcome to Lab Logger";
     let width = 40;
     
     // Print the top border
@@ -198,7 +214,9 @@ fn display_branding() {
     for _ in 0..width {
         print!("=");
     }
-    println!("\n\n\x1b[36mDeveloped by Gafoor\x1b[0m\n\n");
+    println!("\n\n\x1b[36mDeveloped by \x1b[33mGafoor\x1b[0m");
+    println!("\x1b[36mUnder the Guidance of \x1b[33mT.Balakrishna sir\x1b[0m");
+    println!("\x1b[36mFrom Dept of \x1b[33mCSE\x1b[0m\n\n");
 }
 
 
@@ -218,32 +236,34 @@ fn start_server() {
 }
 
 fn handle_connection(mut stream: TcpStream) {
-    println!("handling.");
+    // println!("handling.");
     let buf_reader = BufReader::new(&mut stream);
     let request_line_res = buf_reader.lines().next();
     if request_line_res.is_none() {return;}
     let request_line = request_line_res.unwrap().unwrap();
     println!("{}",request_line);
+    let exe_path = env::current_exe().unwrap();
+    let dir = exe_path.parent().unwrap();
     let (status_line, filename) = match &request_line[..] {
         "GET / HTTP/1.1" => 
-            ("HTTP/1.1 200 OK", Path::new("web/index.html").to_str().unwrap().to_string()),
+            ("HTTP/1.1 200 OK", "web/index.html".to_string()),
         s if s.starts_with("GET /?") => {
-            ("HTTP/1.1 200 OK", Path::new("web/index.html").to_str().unwrap().to_string())
+            ("HTTP/1.1 200 OK", "web/index.html".to_string())
         }
         "GET /config HTTP/1.1" => 
             ("HTTP/1.1 200 OK", "config.json".to_string()),
         "GET /list_db HTTP/1.1" => ("HTTP/1.1 200 OK", "list_db".to_string()),
         s if s.starts_with("GET /db/") => {
             let path = request_line[5..].split_whitespace().nth(0).unwrap();
-            println!("{}",path);
+            // println!("{}",path);
             ("HTTP/1.1 200 OK", path.to_string())
         }
         _ => {
             let req_path = request_line[5..].split_whitespace().nth(0).unwrap();
             let filename:Vec<&str> = req_path.split("?").collect();
             let req_path=filename[0];
-            let path = Path::new("web/").join(req_path);
-            println!("{} ",req_path);
+            let path = dir.join("web/").join(req_path);
+            // println!("{} ",req_path);
             if path.exists() {
                 ("HTTP/1.1 200 OK", path.to_str().unwrap().to_string())
             } else {
@@ -290,7 +310,7 @@ fn handle_connection(mut stream: TcpStream) {
 
         // if no table name then accessing master table
         if db.table_name.is_empty() {
-            println!("accessing master only");
+            // println!("accessing master only");
             let master_records = db.get_master_records();
             match master_records {
                 Ok(master_records)=>{
@@ -361,13 +381,13 @@ fn handle_connection(mut stream: TcpStream) {
         return;
     }
     // println!("---- this si {}",filename);
-    let contents = fs::read_to_string(&filename);
+    let contents = fs::read_to_string(dir.join(&filename));
     match contents {
         Ok(contents)=>send_response(stream, status_line, contents),
         Err(err) =>match err.kind() {
             std::io::ErrorKind::InvalidData => {
                 // Handle InvalidData error
-                let contents = fs::read(filename).unwrap();
+                let contents = fs::read(dir.join(filename)).unwrap();
                 send_bit_response( stream, status_line, &contents);
             }
             _ => {
