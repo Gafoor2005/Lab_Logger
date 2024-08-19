@@ -22,7 +22,7 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
 
     if args.len() > 1 && (args[1] == "--version" || args[1] == "-v") {
-        println!("\n\n\x1b[33mLab Logger v1.0.1"); // Set the version number here
+        println!("\n\n\x1b[33mLab Logger v1.0.2"); // Set the version number here
         println!("\x1b[36mDeveloped by Gafoor"); // Set the version number here
         println!("\x1b[0mGitHub \x1b[33mhttps://github.com/Gafoor2005\n\x1b[0m"); // Set the version number here
     } else {

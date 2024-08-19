@@ -66,13 +66,12 @@ pub fn get_config() -> Result<Config> {
 }
 
 fn prompt_user_select(prompt: &str) -> Result<String> {
-    println!("\n{}", prompt);
     let items = vec![
         "Single", 
         "Double", 
     ];
     let selection = Select::new()
-        .with_prompt("\n\x1b[33mWhat do you choose? \x1b[34m(select using arrow keys ⇵)\x1b[0m")
+        .with_prompt(format!("\n{}",prompt))
         .items(&items)
         .interact()
         .unwrap();
